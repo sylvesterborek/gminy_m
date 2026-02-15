@@ -197,12 +197,124 @@
       .leaflet-top.leaflet-left{ margin-top: 54px; }
     }
 
+  
+    /* ===== Always-visible HUD (mobile top bar) ===== */
+    :root{ --hudH: 64px; }
+
+    .hud{
+      display:none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1600;
+      padding: calc(env(safe-area-inset-top) + 6px) 10px 8px;
+      background: rgba(17,24,39,0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .hud .hudLeft{
+      min-width: 0;
+      display:flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1 1 auto;
+    }
+    .hud .hudLabel{
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.1;
+    }
+    .hud .hudTarget{
+      font-size: 14px;
+      font-weight: 850;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px dashed rgba(255,255,255,0.18);
+      background: rgba(96,165,250,0.12);
+      max-width: 100%;
+    }
+    .hud .hudRight{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .hud .hudStats{
+      display:flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: right;
+      font-size: 12px;
+      line-height: 1.1;
+      color: var(--text);
+    }
+    .hud .hudK{ color: var(--muted); font-size: 11px; margin-right: 6px; }
+    .hud .hudV{ font-weight: 850; }
+
+    .hud .hudBtns{
+      display:flex;
+      gap: 6px;
+      align-items:center;
+    }
+    .hudBtn{
+      appearance:none;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 12px;
+      line-height: 1;
+      min-height: 36px;
+      min-width: 64px;
+      cursor:pointer;
+    }
+    .hudBtn.primary{ background: rgba(96,165,250,0.18); border-color: rgba(96,165,250,0.35); }
+    .hudBtn.danger{ background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.30); }
+    .hudBtn:disabled{ opacity: 0.55; cursor: default; }
+
+    @media (max-width: 900px){
+      .hud{ display:flex; }
+      /* Move hamburger below HUD (so it doesn't overlap) */
+      .panelToggle{ top: calc(env(safe-area-inset-top) + var(--hudH) + 10px); }
+      /* Keep Leaflet controls below HUD */
+      .leaflet-top.leaflet-left{ margin-top: calc(var(--hudH) + 12px); }
+      /* Give the map some breathing room on very small devices */
+      #map{ height: 100dvh; }
+    }
+
   </style>
 </head>
 
 <body>
   <button id="panelToggle" class="panelToggle" aria-label="Pokaż/ukryj panel">☰</button>
   <div id="backdrop" class="backdrop" aria-hidden="true"></div>
+
+  <div id="hud" class="hud" role="region" aria-label="Panel gry">
+    <div class="hudLeft">
+      <div class="hudLabel">Znajdź:</div>
+      <div id="hudTargetName" class="hudTarget">Ładowanie…</div>
+    </div>
+    <div class="hudRight">
+      <div class="hudStats" aria-label="Wynik i postęp">
+        <div><span class="hudK">Punkty</span><span id="hudScore" class="hudV">0</span></div>
+        <div><span class="hudK">Postęp</span><span class="hudV"><span id="hudDone">0</span>/<span id="hudTotal">0</span></span></div>
+      </div>
+      <div class="hudBtns" aria-label="Sterowanie">
+        <button id="hudNext" class="hudBtn primary" disabled aria-label="Następna">Następna</button>
+        <button id="hudRestart" class="hudBtn danger" disabled aria-label="Restart">Restart</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app">
     <aside class="sidebar">
       <h1>Gra: gminy województwa śląskiego</h1>
@@ -314,6 +426,22 @@
   const elTotal = document.getElementById("total");
   const elMsg   = document.getElementById("message");
 
+  // HUD (mobile top bar)
+  const elHudTarget = document.getElementById("hudTargetName");
+  const elHudScore  = document.getElementById("hudScore");
+  const elHudDone   = document.getElementById("hudDone");
+  const elHudTotal  = document.getElementById("hudTotal");
+  const btnHudNext  = document.getElementById("hudNext");
+  const btnHudRestart = document.getElementById("hudRestart");
+
+  function setHudHeightVar(){
+    const hud = document.getElementById("hud");
+    if (!hud) return;
+    const h = Math.max(44, Math.round(hud.getBoundingClientRect().height));
+    document.documentElement.style.setProperty("--hudH", h + "px");
+  }
+
+
   const btnNext = document.getElementById("btnNext");
   const btnRestart = document.getElementById("btnRestart");
 
@@ -393,6 +521,8 @@
     uniqueItems.push(it);
   }
   elTotal.textContent = uniqueItems.length.toString();
+  if (elHudTotal) elHudTotal.textContent = uniqueItems.length.toString();
+  setHudHeightVar();
 
   function applyTooltip(layer, name, code) {
     layer.unbindTooltip();
@@ -482,8 +612,14 @@ layer.on("click", () => {
 
     elScore.textContent = "0";
     elDone.textContent = "0";
+    if (elHudScore) elHudScore.textContent = "0";
+    if (elHudDone) elHudDone.textContent = "0";
     btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
     btnRestart.disabled = false;
+    if (btnHudRestart) btnHudRestart.disabled = false;
+    setHudHeightVar();
 
     resetAllStyles();
     nextQuestion();
@@ -494,24 +630,33 @@ layer.on("click", () => {
 
     if (chkLearnMode.checked) {
       elTarget.textContent = "Tryb poznawania mapy";
+      if (elHudTarget) elHudTarget.textContent = "Tryb poznawania mapy";
+      setHudHeightVar();
       setMessage("Tooltipy są włączone. Kliknięcia nie punktują. Odznacz tryb, aby grać.", "");
       btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
       state.locked = false;
       return;
     }
 
     if (state.idx >= state.items.length) {
       elTarget.textContent = "KONIEC 🎉";
+      if (elHudTarget) elHudTarget.textContent = "KONIEC 🎉";
+      setHudHeightVar();
       setMessage(`Koniec! Wynik: ${state.score}/${state.items.length}.`, "ok");
       btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
       state.locked = true;
       return;
     }
 
     state.current = state.items[state.idx];
     elTarget.textContent = state.current.name;
+    if (elHudTarget) elHudTarget.textContent = state.current.name;
+    setHudHeightVar();
     setMessage("Kliknij właściwą gminę na mapie.", "");
     btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
     state.locked = false;
   }
 
@@ -530,11 +675,14 @@ layer.on("click", () => {
       state.score += 1;
       state.done += 1;
       elScore.textContent = state.score.toString();
+    if (elHudScore) elHudScore.textContent = state.score.toString();
       elDone.textContent = state.done.toString();
+    if (elHudDone) elHudDone.textContent = state.done.toString();
       setMessage(`✅ Dobrze!`, "ok");
     } else {
       state.done += 1;
       elDone.textContent = state.done.toString();
+    if (elHudDone) elHudDone.textContent = state.done.toString();
       setMessage(`❌ Źle.`, "bad");
 
       if (chkShowCorrect.checked) {
@@ -550,20 +698,30 @@ layer.on("click", () => {
     setPanel(false);
 
   btnNext.disabled = false;
+    if (btnHudNext) btnHudNext.disabled = false;
     state.idx += 1;
   }
 
   btnNext.addEventListener("click", () => nextQuestion());
   btnRestart.addEventListener("click", () => startGame());
+  if (btnHudNext) btnHudNext.addEventListener("click", () => nextQuestion());
+  if (btnHudRestart) btnHudRestart.addEventListener("click", () => startGame());
+  // Recompute HUD height after initial render
+  setTimeout(setHudHeightVar, 50);
+  window.addEventListener("resize", () => setTimeout(setHudHeightVar, 50));
+  window.addEventListener("orientationchange", () => setTimeout(setHudHeightVar, 200));
 
   chkLearnMode.addEventListener("change", () => {
     state.locked = false;
     btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
     resetAfterRound();
     resetAllStyles();
 
     if (chkLearnMode.checked) {
       elTarget.textContent = "Tryb poznawania mapy";
+      if (elHudTarget) elHudTarget.textContent = "Tryb poznawania mapy";
+      setHudHeightVar();
       setMessage("Tooltipy są włączone. Kliknięcia nie punktują. Odznacz tryb, aby grać.", "");
     } else {
       setMessage("Tryb gry: tooltipy wyłączone.", "");
