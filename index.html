@@ -25,15 +25,9 @@
       --panel2: #0f172a;
       --text: #e5e7eb;
       --muted: #9ca3af;
-      --ok: #10b981;
-      --bad: #ef4444;
-      --accent: #60a5fa;
       --border: rgba(255,255,255,0.08);
 
-      /* mobile height fix */
       --vh: 1vh;
-
-      /* HUD height (ustawiane JS) */
       --hudH: 64px;
     }
 
@@ -101,6 +95,7 @@
     button:active { transform: translateY(1px); }
     button.primary { background: rgba(96,165,250,0.18); border-color: rgba(96,165,250,0.35); }
     button.danger  { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.30); }
+    button:disabled { opacity: 0.55; cursor: default; }
 
     .stats {
       display: grid;
@@ -126,7 +121,7 @@
       min-height: 44px;
       line-height: 1.25;
     }
-    .msg.ok { border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.10); }
+    .msg.ok  { border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.10); }
     .msg.bad { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.10); }
 
     .opt {
@@ -151,7 +146,7 @@
       background: #e5e7eb;
     }
 
-    /* ✅ usuwa focus-ramkę po tapnięciu w poligon */
+    /* usuwa focus-ramkę po tapnięciu */
     .leaflet-container .leaflet-interactive:focus,
     .leaflet-container .leaflet-interactive:active,
     .leaflet-container svg path:focus,
@@ -175,7 +170,7 @@
       color: #fff;
     }
 
-    /* ===== Mobile usability ===== */
+    /* ===== Mobile drawer ===== */
     .panelToggle{
       display:none;
       position: fixed;
@@ -224,7 +219,7 @@
       .leaflet-top.leaflet-left{ margin-top: calc(var(--hudH) + 12px); }
     }
 
-    /* ===== Always-visible HUD (mobile top bar) ===== */
+    /* ===== HUD (mobile top bar) ===== */
     .hud{
       display:none;
       position: fixed;
@@ -404,15 +399,18 @@
   window.addEventListener('orientationchange', () => setTimeout(setVH, 200), { passive: true });
 
   // ========== USTAWIENIA ==========
-  const GEOJSON_FILE = "Slaskie_gminy.json"; // (GeoJSON w pliku .json)
+  const GEOJSON_FILE = "Slaskie_gminy.json";
   const NAME_FIELD = "JPT_NAZWA_";
   const CODE_FIELD = "JPT_KOD_JE";
 
-  const baseStyle = { color:"rgba(0,0,0,0.85)", weight:1.2, opacity:0.9, fillColor:"#60a5fa", fillOpacity:0.99 };
-  const hoverStyle = { weight:2.6, opacity:1.0, fillOpacity:0.85 };
-  const correctStyle = { color:"rgba(0,0,0,0.95)", weight:3.2, fillColor:"#10b981", fillOpacity:0.95 };
-  const wrongStyle = { color:"rgba(0,0,0,0.95)", weight:3.2, fillColor:"#ef4444", fillOpacity:0.95 };
-  const revealCorrectStyle = { color:"rgba(0,0,0,0.95)", weight:3.0, fillColor:"#10b981", fillOpacity:0.30 };
+  // style bazowy / hover / poprawne / błędne
+  const baseStyle    = { color:"rgba(0,0,0,0.85)", weight:1.2, opacity:0.9, fillColor:"#60a5fa", fillOpacity:0.85 };
+  const hoverStyle   = { weight:2.6, opacity:1.0, fillOpacity:0.92 };
+  const correctStyle = { color:"rgba(0,0,0,0.95)", weight:3.0, fillColor:"#10b981", fillOpacity:0.92 };
+  const wrongStyle   = { color:"rgba(0,0,0,0.95)", weight:3.0, fillColor:"#ef4444", fillOpacity:0.92 };
+
+  // (opcjonalne) krótkie pokazanie poprawnej po błędzie
+  const revealCorrectStyle = { color:"rgba(0,0,0,0.95)", weight:3.0, fillColor:"#10b981", fillOpacity:0.35 };
 
   // ========== UI ==========
   const elTarget = document.getElementById("targetName");
@@ -443,8 +441,24 @@
     document.documentElement.style.setProperty("--hudH", h + "px");
   }
 
-  // ========== MAPA (ważne: map dostępny zanim panel go użyje) ==========
+  function setMessage(text, type) {
+    elMsg.classList.remove("ok", "bad");
+    if (type === "ok") elMsg.classList.add("ok");
+    if (type === "bad") elMsg.classList.add("bad");
+    elMsg.textContent = text || "";
+  }
+
+  // ========== MAPA ==========
   let map = null;
+  map = L.map("map", { zoomControl: true });
+
+  window.addEventListener("resize", () => map && map.invalidateSize(), { passive: true });
+  window.addEventListener("orientationchange", () => setTimeout(() => map && map.invalidateSize(), 250), { passive: true });
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
 
   // ========== PANEL MOBILE ==========
   const sidebar = document.querySelector(".sidebar");
@@ -455,8 +469,6 @@
     if (!sidebar || !btnPanel || !backdrop) return;
     sidebar.classList.toggle("open", open);
     backdrop.classList.toggle("show", open);
-
-    // ✅ bezpiecznie: map może jeszcze nie być gotowa
     if (map) setTimeout(() => map.invalidateSize(), 260);
   }
 
@@ -464,23 +476,6 @@
     btnPanel.addEventListener("click", () => setPanel(!sidebar.classList.contains("open")));
     backdrop.addEventListener("click", () => setPanel(false));
   }
-
-  function setMessage(text, type) {
-    elMsg.classList.remove("ok", "bad");
-    if (type === "ok") elMsg.classList.add("ok");
-    if (type === "bad") elMsg.classList.add("bad");
-    elMsg.textContent = text || "";
-  }
-
-  // init map
-  map = L.map("map", { zoomControl: true });
-  window.addEventListener("resize", () => map && map.invalidateSize(), { passive: true });
-  window.addEventListener("orientationchange", () => setTimeout(() => map && map.invalidateSize(), 250), { passive: true });
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
 
   // ========== Wczytanie JSON ==========
   let geo;
@@ -499,8 +494,7 @@
     return;
   }
 
-  const layerByCode = new Map();
-
+  // lista gmin (unique po code)
   const allItems = geo.features
     .map(f => {
       const p = f.properties || {};
@@ -517,24 +511,43 @@
     seen.add(it.code);
     uniqueItems.push(it);
   }
+
   elTotal.textContent = uniqueItems.length.toString();
   if (elHudTotal) elHudTotal.textContent = uniqueItems.length.toString();
   setHudHeightVar();
+
+  // mapowanie code -> layer
+  const layerByCode = new Map();
+
+  // ✅ STATUS: target gminy z pytania (zielona/czerwona na stałe)
+  const statusByCode = new Map(); // code -> "ok" | "bad"
+
+  function styleForCode(code){
+    const st = statusByCode.get(code);
+    if (st === "ok")  return { ...correctStyle };
+    if (st === "bad") return { ...wrongStyle };
+    return { ...baseStyle };
+  }
+
+  function applyPersistentStyle(layer){
+    const p = layer?.feature?.properties || {};
+    const code = (p[CODE_FIELD] ?? "").toString().trim();
+    layer.setStyle(styleForCode(code));
+  }
 
   function applyTooltip(layer, name, code) {
     layer.unbindTooltip();
     if (chkLearnMode.checked) layer.bindTooltip(name ? name : code, { sticky: true });
   }
 
+  // ========== Stan gry ==========
   const state = {
     items: [],
     idx: 0,
     score: 0,
     done: 0,
     locked: false,
-    current: null,
-    lastClicked: null,
-    lastCorrect: null
+    current: null
   };
 
   function shuffle(array) {
@@ -545,8 +558,13 @@
     return array;
   }
 
+  // ========== Warstwa GeoJSON ==========
   const geoLayer = L.geoJSON(geo, {
-    style: () => ({ ...baseStyle }),
+    style: (feature) => {
+      const p = feature.properties || {};
+      const code = (p[CODE_FIELD] ?? "").toString().trim();
+      return styleForCode(code);
+    },
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
       const name = (p[NAME_FIELD] ?? "").toString().trim();
@@ -557,26 +575,29 @@
       applyTooltip(layer, name, code);
       chkLearnMode.addEventListener("change", () => applyTooltip(layer, name, code));
 
-      // hover tylko gdy nie-touch
+      // hover tylko dla non-touch (na touch i tak przesuwasz mapę)
       if (!L.Browser.touch) {
         layer.on("mouseover", () => {
           if (state.locked) return;
-          layer.setStyle({ ...hoverStyle });
+          // hover, ale zachowaj kolor trwały (ok/bad/base)
+          const st = styleForCode(code);
+          layer.setStyle({ ...st, ...hoverStyle });
           layer.bringToFront();
         });
         layer.on("mouseout", () => {
           if (state.locked) return;
-          geoLayer.resetStyle(layer);
+          applyPersistentStyle(layer);
         });
       }
 
       layer.on("click", () => {
-        // ✅ usuń focus (ramkę) po tapnięciu
+        // usuń focus-ramkę po tapnięciu
         const el = (layer.getElement && layer.getElement()) || layer._path;
         if (el && el.blur) el.blur();
 
         if (chkLearnMode.checked) return;
         if (state.locked) return;
+
         handleClick(code, name, layer);
       });
     }
@@ -585,15 +606,8 @@
   try { map.fitBounds(geoLayer.getBounds(), { padding: [12, 12] }); }
   catch (_) { map.setView([50.25, 19.0], 8); }
 
-  function resetAllStyles() {
-    geoLayer.eachLayer(l => geoLayer.resetStyle(l));
-  }
-
-  function resetAfterRound() {
-    if (state.lastClicked) geoLayer.resetStyle(state.lastClicked);
-    if (state.lastCorrect && state.lastCorrect !== state.lastClicked) geoLayer.resetStyle(state.lastCorrect);
-    state.lastClicked = null;
-    state.lastCorrect = null;
+  function resetAllStyles(){
+    geoLayer.eachLayer(l => applyPersistentStyle(l));
   }
 
   function startGame() {
@@ -605,13 +619,15 @@
     state.done = 0;
     state.locked = false;
     state.current = null;
-    state.lastClicked = null;
-    state.lastCorrect = null;
+
+    // ✅ zerujemy wyniki trwałe
+    statusByCode.clear();
+    resetAllStyles();
 
     elScore.textContent = "0";
     elDone.textContent = "0";
     if (elHudScore) elHudScore.textContent = "0";
-    if (elHudDone) elHudDone.textContent = "0";
+    if (elHudDone)  elHudDone.textContent  = "0";
 
     btnNext.disabled = true;
     if (btnHudNext) btnHudNext.disabled = true;
@@ -619,13 +635,10 @@
     btnRestart.disabled = false;
     if (btnHudRestart) btnHudRestart.disabled = false;
 
-    resetAllStyles();
     nextQuestion();
   }
 
   function nextQuestion() {
-    resetAfterRound();
-
     if (chkLearnMode.checked) {
       elTarget.textContent = "Tryb poznawania mapy";
       if (elHudTarget) elHudTarget.textContent = "Tryb poznawania mapy";
@@ -658,67 +671,77 @@
     setMessage("Kliknij właściwą gminę na mapie.", "");
     btnNext.disabled = true;
     if (btnHudNext) btnHudNext.disabled = true;
+
     state.locked = false;
   }
 
-  function handleClick(code, name, layer) {
+  function handleClick(clickedCode, clickedName, clickedLayer) {
     state.locked = true;
 
     const target = state.current;
-    const clickedCode = (code || "").toString();
-    const isCorrect = clickedCode === target.code;
+    const isCorrect = (clickedCode || "").toString() === target.code;
 
-    layer.setStyle(isCorrect ? correctStyle : wrongStyle);
-    layer.bringToFront();
-    state.lastClicked = layer;
+    // ✅ zapisujemy wynik dla gminy z PYTANIA (target)
+    statusByCode.set(target.code, isCorrect ? "ok" : "bad");
+
+    // ustaw trwały styl na target
+    const targetLayer = layerByCode.get(target.code);
+    if (targetLayer) {
+      applyPersistentStyle(targetLayer);
+      targetLayer.bringToFront();
+    }
+
+    // krótkie info wizualne dla złego kliknięcia (tylko flash), ale bez trwałego statusu
+    if (!isCorrect && clickedLayer && clickedCode !== target.code) {
+      clickedLayer.setStyle({ ...wrongStyle, fillOpacity: 0.35, weight: 2.2 });
+      clickedLayer.bringToFront();
+      setTimeout(() => applyPersistentStyle(clickedLayer), 650);
+    }
 
     if (isCorrect) {
       state.score += 1;
-      state.done += 1;
-      elScore.textContent = state.score.toString();
-      if (elHudScore) elHudScore.textContent = state.score.toString();
-      elDone.textContent = state.done.toString();
-      if (elHudDone) elHudDone.textContent = state.done.toString();
       setMessage("✅ Dobrze!", "ok");
     } else {
-      state.done += 1;
-      elDone.textContent = state.done.toString();
-      if (elHudDone) elHudDone.textContent = state.done.toString();
       setMessage("❌ Źle.", "bad");
 
-      if (chkShowCorrect.checked) {
-        const correctLayer = layerByCode.get(target.code);
-        if (correctLayer) {
-          correctLayer.setStyle(revealCorrectStyle);
-          correctLayer.bringToFront();
-          state.lastCorrect = correctLayer;
-        }
+      // jeśli włączone, pokaż poprawną gminę „mocniej” na chwilę (opcjonalne)
+      if (chkShowCorrect.checked && targetLayer) {
+        targetLayer.setStyle(revealCorrectStyle);
+        targetLayer.bringToFront();
+        setTimeout(() => applyPersistentStyle(targetLayer), 900);
       }
     }
+
+    state.done += 1;
+
+    elScore.textContent = String(state.score);
+    elDone.textContent  = String(state.done);
+    if (elHudScore) elHudScore.textContent = String(state.score);
+    if (elHudDone)  elHudDone.textContent  = String(state.done);
+
+    // odśwież style całej warstwy zgodnie z mapą statusów
+    // (ważne: to utrwala zielone/czerwone dla już „wybranych” gmin)
+    resetAllStyles();
 
     setPanel(false);
 
     btnNext.disabled = false;
     if (btnHudNext) btnHudNext.disabled = false;
+
     state.idx += 1;
   }
 
+  // przyciski
   btnNext.addEventListener("click", () => nextQuestion());
   btnRestart.addEventListener("click", () => startGame());
   if (btnHudNext) btnHudNext.addEventListener("click", () => nextQuestion());
   if (btnHudRestart) btnHudRestart.addEventListener("click", () => startGame());
-
-  // HUD height recalculation
-  setTimeout(setHudHeightVar, 50);
-  window.addEventListener("resize", () => setTimeout(setHudHeightVar, 50), { passive: true });
-  window.addEventListener("orientationchange", () => setTimeout(setHudHeightVar, 200), { passive: true });
 
   chkLearnMode.addEventListener("change", () => {
     state.locked = false;
     btnNext.disabled = true;
     if (btnHudNext) btnHudNext.disabled = true;
 
-    resetAfterRound();
     resetAllStyles();
 
     if (chkLearnMode.checked) {
@@ -732,6 +755,12 @@
     }
   });
 
+  // HUD height recalculation
+  setTimeout(setHudHeightVar, 50);
+  window.addEventListener("resize", () => setTimeout(setHudHeightVar, 50), { passive: true });
+  window.addEventListener("orientationchange", () => setTimeout(setHudHeightVar, 200), { passive: true });
+
+  // start
   startGame();
 })();
 </script>
