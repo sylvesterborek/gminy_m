@@ -29,13 +29,28 @@
       --bad: #ef4444;
       --accent: #60a5fa;
       --border: rgba(255,255,255,0.08);
+
+      /* mobile height fix */
+      --vh: 1vh;
+
+      /* HUD height (ustawiane JS) */
+      --hudH: 64px;
     }
 
-    html, body { height: 100dvh; margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
     .app {
       display: grid;
       grid-template-columns: 360px 1fr;
-      height: 100dvh;
+      height: calc(var(--vh) * 100);
+      min-height: 100vh;
     }
 
     .sidebar {
@@ -43,6 +58,7 @@
       border-right: 1px solid var(--border);
       background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
       overflow: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     h1 { font-size: 18px; margin: 0 0 8px; }
@@ -79,6 +95,7 @@
       cursor: pointer;
       transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
       flex: 1 1 auto;
+      min-height: 44px;
     }
     button:hover { background: rgba(255,255,255,0.10); }
     button:active { transform: translateY(1px); }
@@ -127,8 +144,20 @@
     }
     .opt input { transform: scale(1.05); }
 
-    /* jasne tło jako fallback (kafelki OSM i tak będą na wierzchu) */
-    #map { width: 100%; height: 100dvh; background: #e5e7eb; }
+    #map {
+      width: 100%;
+      height: calc(var(--vh) * 100);
+      min-height: 100vh;
+      background: #e5e7eb;
+    }
+
+    /* ✅ usuwa focus-ramkę po tapnięciu w poligon */
+    .leaflet-container .leaflet-interactive:focus,
+    .leaflet-container .leaflet-interactive:active,
+    .leaflet-container svg path:focus,
+    .leaflet-container svg path:active {
+      outline: none !important;
+    }
 
     .footer {
       font-size: 12px;
@@ -145,7 +174,7 @@
       border: 1px solid var(--border);
       color: #fff;
     }
-  
+
     /* ===== Mobile usability ===== */
     .panelToggle{
       display:none;
@@ -177,32 +206,133 @@
 
     @media (max-width: 900px){
       .app{ grid-template-columns: 1fr; }
-      /* Sidebar becomes an off-canvas drawer */
       .sidebar{
         position: fixed;
         top: 0;
         left: 0;
         width: min(360px, 88vw);
-        height: 100dvh;
+        height: calc(var(--vh) * 100);
+        min-height: 100vh;
         z-index: 1500;
         transform: translateX(-105%);
         transition: transform 0.22s ease;
         border-right: 1px solid var(--border);
         box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-        -webkit-overflow-scrolling: touch;
       }
       .sidebar.open{ transform: translateX(0); }
       .panelToggle{ display:block; }
-      /* Make Leaflet controls accessible under the toggle */
-      .leaflet-top.leaflet-left{ margin-top: 54px; }
+      .leaflet-top.leaflet-left{ margin-top: calc(var(--hudH) + 12px); }
     }
 
+    /* ===== Always-visible HUD (mobile top bar) ===== */
+    .hud{
+      display:none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1600;
+      padding: calc(env(safe-area-inset-top) + 6px) 10px 8px;
+      background: rgba(17,24,39,0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .hud .hudLeft{
+      min-width: 0;
+      display:flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1 1 auto;
+    }
+    .hud .hudLabel{
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.1;
+    }
+    .hud .hudTarget{
+      font-size: 14px;
+      font-weight: 850;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px dashed rgba(255,255,255,0.18);
+      background: rgba(96,165,250,0.12);
+      max-width: 100%;
+    }
+    .hud .hudRight{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .hud .hudStats{
+      display:flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: right;
+      font-size: 12px;
+      line-height: 1.1;
+      color: var(--text);
+    }
+    .hud .hudK{ color: var(--muted); font-size: 11px; margin-right: 6px; }
+    .hud .hudV{ font-weight: 850; }
+
+    .hud .hudBtns{
+      display:flex;
+      gap: 6px;
+      align-items:center;
+    }
+    .hudBtn{
+      appearance:none;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 12px;
+      line-height: 1;
+      min-height: 36px;
+      min-width: 64px;
+      cursor:pointer;
+    }
+    .hudBtn.primary{ background: rgba(96,165,250,0.18); border-color: rgba(96,165,250,0.35); }
+    .hudBtn.danger{ background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.30); }
+    .hudBtn:disabled{ opacity: 0.55; cursor: default; }
+
+    @media (max-width: 900px){
+      .hud{ display:flex; }
+      .panelToggle{ top: calc(env(safe-area-inset-top) + var(--hudH) + 10px); }
+    }
   </style>
 </head>
 
 <body>
   <button id="panelToggle" class="panelToggle" aria-label="Pokaż/ukryj panel">☰</button>
   <div id="backdrop" class="backdrop" aria-hidden="true"></div>
+
+  <div id="hud" class="hud" role="region" aria-label="Panel gry">
+    <div class="hudLeft">
+      <div class="hudLabel">Znajdź:</div>
+      <div id="hudTargetName" class="hudTarget">Ładowanie…</div>
+    </div>
+    <div class="hudRight">
+      <div class="hudStats" aria-label="Wynik i postęp">
+        <div><span class="hudK">Punkty</span><span id="hudScore" class="hudV">0</span></div>
+        <div><span class="hudK">Postęp</span><span class="hudV"><span id="hudDone">0</span>/<span id="hudTotal">0</span></span></div>
+      </div>
+      <div class="hudBtns" aria-label="Sterowanie">
+        <button id="hudNext" class="hudBtn primary" disabled aria-label="Następna">Następna</button>
+        <button id="hudRestart" class="hudBtn danger" disabled aria-label="Restart">Restart</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app">
     <aside class="sidebar">
       <h1>Gra: gminy województwa śląskiego</h1>
@@ -255,8 +385,7 @@
       </div>
 
       <div class="footer">
-        © 2026
-        rownież na <code class="inline">http://github/:8000</code>.
+        © 2026 również na <code class="inline">http://github/:8000</code>.
       </div>
     </aside>
 
@@ -265,47 +394,25 @@
 
 <script>
 (async function () {
+  // ======= Mobile viewport height fix =======
+  function setVH(){
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+  setVH();
+  window.addEventListener('resize', setVH, { passive: true });
+  window.addEventListener('orientationchange', () => setTimeout(setVH, 200), { passive: true });
+
   // ========== USTAWIENIA ==========
-  const GEOJSON_FILE = "Slaskie_gminy.json";
+  const GEOJSON_FILE = "Slaskie_gminy.json"; // (GeoJSON w pliku .json)
   const NAME_FIELD = "JPT_NAZWA_";
   const CODE_FIELD = "JPT_KOD_JE";
 
-  // style
-  const baseStyle = {
-    color: "rgba(0,0,0,0.85)",
-    weight: 1.2,
-    opacity: 0.9,
-    fillColor: "#60a5fa",
-    fillOpacity: 0.99
-  };
-
-  // hover: fillOpacity = 0.7
-  const hoverStyle = {
-    weight: 2.6,
-    opacity: 1.0,
-    fillOpacity: 0.85
-  };
-
-  const correctStyle = {
-    color: "rgba(0,0,0,0.95)",
-    weight: 3.2,
-    fillColor: "#10b981",
-    fillOpacity: 0.95
-  };
-
-  const wrongStyle = {
-    color: "rgba(0,0,0,0.95)",
-    weight: 3.2,
-    fillColor: "#ef4444",
-    fillOpacity: 0.95
-  };
-
-  const revealCorrectStyle = {
-    color: "rgba(0,0,0,0.95)",
-    weight: 3.0,
-    fillColor: "#10b981",
-    fillOpacity: 0.30
-  };
+  const baseStyle = { color:"rgba(0,0,0,0.85)", weight:1.2, opacity:0.9, fillColor:"#60a5fa", fillOpacity:0.99 };
+  const hoverStyle = { weight:2.6, opacity:1.0, fillOpacity:0.85 };
+  const correctStyle = { color:"rgba(0,0,0,0.95)", weight:3.2, fillColor:"#10b981", fillOpacity:0.95 };
+  const wrongStyle = { color:"rgba(0,0,0,0.95)", weight:3.2, fillColor:"#ef4444", fillOpacity:0.95 };
+  const revealCorrectStyle = { color:"rgba(0,0,0,0.95)", weight:3.0, fillColor:"#10b981", fillOpacity:0.30 };
 
   // ========== UI ==========
   const elTarget = document.getElementById("targetName");
@@ -321,7 +428,25 @@
   const chkShowCorrect = document.getElementById("showCorrect");
   const chkShuffleEachRun = document.getElementById("shuffleEachRun");
 
-  // ========== MOBILE: PANEL (drawer) ==========
+  // HUD
+  const elHudTarget = document.getElementById("hudTargetName");
+  const elHudScore  = document.getElementById("hudScore");
+  const elHudDone   = document.getElementById("hudDone");
+  const elHudTotal  = document.getElementById("hudTotal");
+  const btnHudNext  = document.getElementById("hudNext");
+  const btnHudRestart = document.getElementById("hudRestart");
+
+  function setHudHeightVar(){
+    const hud = document.getElementById("hud");
+    if (!hud) return;
+    const h = Math.max(44, Math.round(hud.getBoundingClientRect().height));
+    document.documentElement.style.setProperty("--hudH", h + "px");
+  }
+
+  // ========== MAPA (ważne: map dostępny zanim panel go użyje) ==========
+  let map = null;
+
+  // ========== PANEL MOBILE ==========
   const sidebar = document.querySelector(".sidebar");
   const btnPanel = document.getElementById("panelToggle");
   const backdrop = document.getElementById("backdrop");
@@ -330,14 +455,15 @@
     if (!sidebar || !btnPanel || !backdrop) return;
     sidebar.classList.toggle("open", open);
     backdrop.classList.toggle("show", open);
-    setTimeout(() => map.invalidateSize(), 260);
+
+    // ✅ bezpiecznie: map może jeszcze nie być gotowa
+    if (map) setTimeout(() => map.invalidateSize(), 260);
   }
 
   if (btnPanel && backdrop && sidebar) {
     btnPanel.addEventListener("click", () => setPanel(!sidebar.classList.contains("open")));
     backdrop.addEventListener("click", () => setPanel(false));
   }
-
 
   function setMessage(text, type) {
     elMsg.classList.remove("ok", "bad");
@@ -346,18 +472,17 @@
     elMsg.textContent = text || "";
   }
 
-  // ========== MAPA ==========
-  const map = L.map("map", { zoomControl: true });
-  window.addEventListener("resize", () => map.invalidateSize());
-  window.addEventListener("orientationchange", () => setTimeout(() => map.invalidateSize(), 250));
+  // init map
+  map = L.map("map", { zoomControl: true });
+  window.addEventListener("resize", () => map && map.invalidateSize(), { passive: true });
+  window.addEventListener("orientationchange", () => setTimeout(() => map && map.invalidateSize(), 250), { passive: true });
 
-  // ✅ Podkład OpenStreetMap (żeby tło było jak wcześniej)
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
-  // ========== Wczytanie GeoJSON ==========
+  // ========== Wczytanie JSON ==========
   let geo;
   try {
     const res = await fetch(GEOJSON_FILE, { cache: "no-store" });
@@ -370,30 +495,11 @@
   }
 
   if (!geo || geo.type !== "FeatureCollection" || !Array.isArray(geo.features)) {
-    setMessage("Plik GeoJSON ma zły format (musi być FeatureCollection).", "bad");
+    setMessage("Plik JSON ma zły format (musi być FeatureCollection).", "bad");
     return;
   }
 
   const layerByCode = new Map();
-
-
-  // ========== STAN GRY (kolory trwałe) ==========
-  // status: "ok" (trafione) | "bad" (nietrafione)
-  const statusByCode = new Map();
-
-  function styleFor(code) {
-    const st = statusByCode.get(code);
-    if (st === "ok") return { ...correctStyle };
-    if (st === "bad") return { ...wrongStyle };
-    return { ...baseStyle };
-  }
-
-  function applyPersistentStyle(layer) {
-    const p = (layer && layer.feature && layer.feature.properties) ? layer.feature.properties : {};
-    const code = (p[CODE_FIELD] ?? "").toString().trim();
-    layer.setStyle(styleFor(code));
-  }
-
 
   const allItems = geo.features
     .map(f => {
@@ -412,12 +518,12 @@
     uniqueItems.push(it);
   }
   elTotal.textContent = uniqueItems.length.toString();
+  if (elHudTotal) elHudTotal.textContent = uniqueItems.length.toString();
+  setHudHeightVar();
 
   function applyTooltip(layer, name, code) {
     layer.unbindTooltip();
-    if (chkLearnMode.checked) {
-      layer.bindTooltip(name ? name : code, { sticky: true });
-    }
+    if (chkLearnMode.checked) layer.bindTooltip(name ? name : code, { sticky: true });
   }
 
   const state = {
@@ -428,7 +534,7 @@
     locked: false,
     current: null,
     lastClicked: null,
-    lastCorrect: null,
+    lastCorrect: null
   };
 
   function shuffle(array) {
@@ -440,11 +546,7 @@
   }
 
   const geoLayer = L.geoJSON(geo, {
-    style: (feature) => {
-      const p = feature.properties || {};
-      const code = (p[CODE_FIELD] ?? "").toString().trim();
-      return styleFor(code);
-    },
+    style: () => ({ ...baseStyle }),
     onEachFeature: (feature, layer) => {
       const p = feature.properties || {};
       const name = (p[NAME_FIELD] ?? "").toString().trim();
@@ -454,19 +556,25 @@
 
       applyTooltip(layer, name, code);
       chkLearnMode.addEventListener("change", () => applyTooltip(layer, name, code));
+
+      // hover tylko gdy nie-touch
       if (!L.Browser.touch) {
         layer.on("mouseover", () => {
           if (state.locked) return;
           layer.setStyle({ ...hoverStyle });
           layer.bringToFront();
         });
-
         layer.on("mouseout", () => {
           if (state.locked) return;
           geoLayer.resetStyle(layer);
         });
       }
-layer.on("click", () => {
+
+      layer.on("click", () => {
+        // ✅ usuń focus (ramkę) po tapnięciu
+        const el = (layer.getElement && layer.getElement()) || layer._path;
+        if (el && el.blur) el.blur();
+
         if (chkLearnMode.checked) return;
         if (state.locked) return;
         handleClick(code, name, layer);
@@ -474,26 +582,22 @@ layer.on("click", () => {
     }
   }).addTo(map);
 
-  try {
-    map.fitBounds(geoLayer.getBounds(), { padding: [12, 12] });
-  } catch (_) {
-    map.setView([50.25, 19.0], 8);
-  }
+  try { map.fitBounds(geoLayer.getBounds(), { padding: [12, 12] }); }
+  catch (_) { map.setView([50.25, 19.0], 8); }
 
   function resetAllStyles() {
-    geoLayer.eachLayer(l => applyPersistentStyle(l));
+    geoLayer.eachLayer(l => geoLayer.resetStyle(l));
   }
 
   function resetAfterRound() {
-    // Trwałe kolory pozostają. Czyścimy tylko wskaźniki pomocnicze.
+    if (state.lastClicked) geoLayer.resetStyle(state.lastClicked);
+    if (state.lastCorrect && state.lastCorrect !== state.lastClicked) geoLayer.resetStyle(state.lastCorrect);
     state.lastClicked = null;
     state.lastCorrect = null;
   }
 
   function startGame() {
     state.items = uniqueItems.slice();
-
-    statusByCode.clear();
     if (chkShuffleEachRun.checked) shuffle(state.items);
 
     state.idx = 0;
@@ -506,8 +610,14 @@ layer.on("click", () => {
 
     elScore.textContent = "0";
     elDone.textContent = "0";
+    if (elHudScore) elHudScore.textContent = "0";
+    if (elHudDone) elHudDone.textContent = "0";
+
     btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
+
     btnRestart.disabled = false;
+    if (btnHudRestart) btnHudRestart.disabled = false;
 
     resetAllStyles();
     nextQuestion();
@@ -518,24 +628,36 @@ layer.on("click", () => {
 
     if (chkLearnMode.checked) {
       elTarget.textContent = "Tryb poznawania mapy";
+      if (elHudTarget) elHudTarget.textContent = "Tryb poznawania mapy";
+      setHudHeightVar();
+
       setMessage("Tooltipy są włączone. Kliknięcia nie punktują. Odznacz tryb, aby grać.", "");
       btnNext.disabled = true;
+      if (btnHudNext) btnHudNext.disabled = true;
       state.locked = false;
       return;
     }
 
     if (state.idx >= state.items.length) {
       elTarget.textContent = "KONIEC 🎉";
+      if (elHudTarget) elHudTarget.textContent = "KONIEC 🎉";
+      setHudHeightVar();
+
       setMessage(`Koniec! Wynik: ${state.score}/${state.items.length}.`, "ok");
       btnNext.disabled = true;
+      if (btnHudNext) btnHudNext.disabled = true;
       state.locked = true;
       return;
     }
 
     state.current = state.items[state.idx];
     elTarget.textContent = state.current.name;
+    if (elHudTarget) elHudTarget.textContent = state.current.name;
+    setHudHeightVar();
+
     setMessage("Kliknij właściwą gminę na mapie.", "");
     btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
     state.locked = false;
   }
 
@@ -546,68 +668,63 @@ layer.on("click", () => {
     const clickedCode = (code || "").toString();
     const isCorrect = clickedCode === target.code;
 
-    // Zasada: kolorujemy *gminę z pytania* (target) na stałe:
-    // - zielona jeśli odpowiedź była poprawna
-    // - czerwona jeśli błędna
-    if (isCorrect) {
-      statusByCode.set(target.code, "ok");
-      applyPersistentStyle(layer);
-      layer.bringToFront();
+    layer.setStyle(isCorrect ? correctStyle : wrongStyle);
+    layer.bringToFront();
+    state.lastClicked = layer;
 
+    if (isCorrect) {
       state.score += 1;
       state.done += 1;
       elScore.textContent = state.score.toString();
+      if (elHudScore) elHudScore.textContent = state.score.toString();
       elDone.textContent = state.done.toString();
-      setMessage(`✅ Dobrze!`, "ok");
+      if (elHudDone) elHudDone.textContent = state.done.toString();
+      setMessage("✅ Dobrze!", "ok");
     } else {
-      statusByCode.set(target.code, "bad");
-
-      // Krótki "flash" klikniętej złej gminy (żeby było widać co kliknąłeś),
-      // potem wraca do stylu bazowego / trwałego (jeśli już była oceniana).
-      layer.setStyle({ ...wrongStyle, fillOpacity: 0.35, weight: 2.2 });
-      layer.bringToFront();
-      setTimeout(() => geoLayer.resetStyle(layer), 850);
-
-      // Oznacz gminę z pytania na czerwono (trwale).
-      const targetLayer = layerByCode.get(target.code);
-      if (targetLayer) {
-        if (chkShowCorrect.checked) {
-          // jeśli chcesz podpowiedź: pokaż zielony "reveal" na moment,
-          // a potem wróć do czerwonego trwałego.
-          targetLayer.setStyle(revealCorrectStyle);
-          targetLayer.bringToFront();
-          setTimeout(() => applyPersistentStyle(targetLayer), 850);
-        } else {
-          applyPersistentStyle(targetLayer);
-          targetLayer.bringToFront();
-        }
-      }
-
       state.done += 1;
       elDone.textContent = state.done.toString();
-      setMessage(`❌ Źle.`, "bad");
-    }
+      if (elHudDone) elHudDone.textContent = state.done.toString();
+      setMessage("❌ Źle.", "bad");
 
-    // po zmianie statusów odśwież style (gdyby coś było na hover)
-    resetAllStyles();
+      if (chkShowCorrect.checked) {
+        const correctLayer = layerByCode.get(target.code);
+        if (correctLayer) {
+          correctLayer.setStyle(revealCorrectStyle);
+          correctLayer.bringToFront();
+          state.lastCorrect = correctLayer;
+        }
+      }
+    }
 
     setPanel(false);
 
     btnNext.disabled = false;
+    if (btnHudNext) btnHudNext.disabled = false;
     state.idx += 1;
   }
 
-  btnNext.addEventListener("click", () => nextQuestion());("click", () => nextQuestion());
+  btnNext.addEventListener("click", () => nextQuestion());
   btnRestart.addEventListener("click", () => startGame());
+  if (btnHudNext) btnHudNext.addEventListener("click", () => nextQuestion());
+  if (btnHudRestart) btnHudRestart.addEventListener("click", () => startGame());
+
+  // HUD height recalculation
+  setTimeout(setHudHeightVar, 50);
+  window.addEventListener("resize", () => setTimeout(setHudHeightVar, 50), { passive: true });
+  window.addEventListener("orientationchange", () => setTimeout(setHudHeightVar, 200), { passive: true });
 
   chkLearnMode.addEventListener("change", () => {
     state.locked = false;
     btnNext.disabled = true;
+    if (btnHudNext) btnHudNext.disabled = true;
+
     resetAfterRound();
     resetAllStyles();
 
     if (chkLearnMode.checked) {
       elTarget.textContent = "Tryb poznawania mapy";
+      if (elHudTarget) elHudTarget.textContent = "Tryb poznawania mapy";
+      setHudHeightVar();
       setMessage("Tooltipy są włączone. Kliknięcia nie punktują. Odznacz tryb, aby grać.", "");
     } else {
       setMessage("Tryb gry: tooltipy wyłączone.", "");
@@ -616,7 +733,6 @@ layer.on("click", () => {
   });
 
   startGame();
-
 })();
 </script>
 
